@@ -1,30 +1,29 @@
 # Developer Assessment
 
-This repository contains code used in the interview process for developers joining the Microsoft Engineering Practice at ClearPoint.
+As you can see, this project only has the backend solution.
 
-There are two parts to this solution and depending on the type of role you are applying for you will be asked to contribute to one or both areas.
-The application is a simple to-do list that allows a user to create items in a list and mark them as complete.
-It is a React-based front end application that uses a Microsoft Web API at the backend to facilitate using and persisting items in this to-do list.
-<br/><br/>
+- Has been structured for re-usability in some parts of the code.
+- Unit and Integration tests have been added.
+- Summary of the methods have been added.
+- TODO comments added as well for reference to stories.
+- InMemory DB has been used.
 
-## FOR THOSE APPLYING FOR A BACK-END DEVELOPER ROLE
+Things to do in the future:
+- Add a Core project to decouple the Controller from the Data layer. This will help us to have all the business logic away from the controller and from the repositories.
+- Add Unit and Integration tests to have better coverage.
+- Add ViewModels on the Controller. And entities on the Core.
+- Add versioning on the API.
+- Add a middleware where it can catch any known exception.
+- Add custom errors, so we can have a better control on what we want to log and what to show to the consumer.
+- Retry policy on the DB if we spot transient errors.
+- Define infra configuration.
+- Add protected resources. Our endpoints are not secured right now.
 
-For this exercise you are asked to refactor the back end code in this solution. This code is in the **Backend** folder.
-You are free to make changes as and where you see fit. Think about how you might structure the solution, add appropriate tests using a framework of your choice, and leave the solution in a more maintainable and more easily understood state than it was originally.
-<br/><br/>
+For the frontend.
+- This can easily be done on different JIRA cases in parallel with the API work. We just need an API Spec where we agree and "sign a contract" between the API and the consumers.
+- If the UI want to be on sync with what other user is doing, we can have a firebase that can interact.
+- Or if we want to make it more complex, we can have some sort of publish and subscribe from the backend that will publish any update and it will post that on a queue where the UI is listening.
+- Handling exceptions on the UI.
+- Request to the backend a Token to communicate to the endpoints.
 
-## FOR THOSE APPLYING FOR A FULL-STACK DEVELOPER ROLE
-
-For this exercise you are asked to complete the requirements for the *back end developer role above as well as* enhance the UI functionality in the **Frontend** folder.
-The front end functionality requires the following to be added:
-
-1. The ability to surface any errors from the backend API in the UI
-2. The ability to mark an item in the to-do list as complete
-3. Add unit tests to cover the new functionality using a framework of your choice
-
-<br/>
-For both role types, remember that *maintainability and clarity* is key in your solution. 
-You are welcome to use comments in the code to outline any assumptions you might make and/or outline your thinking at various points.
-Once completed you can either push the completed solution to your own repo and send us the link.
-<br/><br/>
-We look forward to seeing your submission and have fun!
+Appreciate the time, and sorry for the delay. If you need me to do something extra, let me know.
