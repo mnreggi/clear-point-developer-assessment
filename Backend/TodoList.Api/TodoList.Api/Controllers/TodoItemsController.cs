@@ -2,71 +2,85 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using TodoList.Api.Mappers;
+using TodoList.Data.Repositories.Interfaces;
 
 namespace TodoList.Api.Controllers
 {
+    // TODO ABC-124: Add new Core Project to handle business logic.
+    // TODO ABC-125: Add logs for better understanding on the flow process (This should have been done when coding each case).
+    // TODO ABC-126: Add summary for each method (This should have been done when coding each case).
+    // TODO ABC-128: Add API versioning capability if possible.
+    // TODO ABC-129: Add Middleware to capture exceptions.
+    // TODO ABC-130: Protect endpoints with policies.
+    
     [Route("api/[controller]")]
     [ApiController]
     public class TodoItemsController : ControllerBase
     {
-        private readonly TodoContext _context;
         private readonly ILogger<TodoItemsController> _logger;
+        private readonly ITodoListRepository _todoListRepository;
 
-        public TodoItemsController(TodoContext context, ILogger<TodoItemsController> logger)
+        public TodoItemsController(ILogger<TodoItemsController> logger, ITodoListRepository todoListRepository)
         {
-            _context = context;
             _logger = logger;
+            _todoListRepository = todoListRepository;
         }
 
         // GET: api/TodoItems
         [HttpGet]
-        public async Task<IActionResult> GetTodoItems()
+        public async Task<ActionResult<List<TodoItem>>> GetTodoItems()
         {
-            var results = await _context.TodoItems.Where(x => !x.IsCompleted).ToListAsync();
-            return Ok(results);
+            _logger.LogDebug("GetTodoItems started");
+            var resultsDtos = await _todoListRepository.GetNotCompletedItems();
+            var results = resultsDtos.ToTodoItem();
+            
+            _logger.LogDebug("GetTodoItems retrieved - Result : {@Result}", results.Count);
+            return results;
         }
 
         // GET: api/TodoItems/...
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetTodoItem(Guid id)
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<TodoItem>> GetTodoItemById(Guid id)
         {
-            var result = await _context.TodoItems.FindAsync(id);
+            _logger.LogDebug("GetTodoItem for id : {@Id}", id);
+            var result = await _todoListRepository.FindByIdNoTrackingAsync(id);
 
             if (result == null)
             {
+                _logger.LogInformation("TodoItem not found. id : {@Id}", id);
                 return NotFound();
             }
 
-            return Ok(result);
+            return Ok(result.ToTodoItem());
         }
 
         // PUT: api/TodoItems/... 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutTodoItem(Guid id, TodoItem todoItem)
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateTodoItem(Guid id, TodoItem todoItem)
         {
             if (id != todoItem.Id)
             {
                 return BadRequest();
             }
 
-            _context.Entry(todoItem).State = EntityState.Modified;
+            var todoItemDto = await _todoListRepository.FindByIdTrackingAsync(id);
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _todoListRepository.UpdateAndSaveChangesAsync(todoItemDto);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!TodoItemIdExists(id))
+                if (!await TodoItemIdExists(id))
                 {
                     return NotFound();
                 }
-                else
-                {
-                    throw;
-                }
+
+                throw;
             }
 
             return NoContent();
@@ -74,32 +88,36 @@ namespace TodoList.Api.Controllers
 
         // POST: api/TodoItems 
         [HttpPost]
-        public async Task<IActionResult> PostTodoItem(TodoItem todoItem)
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        public async Task<ActionResult<TodoItem>> CreateTodoItem(TodoItem todoItem)
         {
             if (string.IsNullOrEmpty(todoItem?.Description))
             {
                 return BadRequest("Description is required");
             }
-            else if (TodoItemDescriptionExists(todoItem.Description))
+
+            if (await TodoItemDescriptionExists(todoItem.Description))
             {
                 return BadRequest("Description already exists");
-            } 
+            }
 
-            _context.TodoItems.Add(todoItem);
-            await _context.SaveChangesAsync();
+            var todoItemDto = todoItem.ToTodoItemDto();
+            
+            await _todoListRepository.CreateAndSaveChangesAsync(todoItemDto);
              
-            return CreatedAtAction(nameof(GetTodoItem), new { id = todoItem.Id }, todoItem);
+            return CreatedAtAction(nameof(GetTodoItemById), new { id = todoItem.Id }, todoItem);
         } 
 
-        private bool TodoItemIdExists(Guid id)
+        private async Task<bool> TodoItemIdExists(Guid id)
         {
-            return _context.TodoItems.Any(x => x.Id == id);
+            return await _todoListRepository.AnyAsync(x => x.Id == id);
         }
 
-        private bool TodoItemDescriptionExists(string description)
+        private async Task<bool> TodoItemDescriptionExists(string description)
         {
-            return _context.TodoItems
-                   .Any(x => x.Description.ToLowerInvariant() == description.ToLowerInvariant() && !x.IsCompleted);
+            return await _todoListRepository.AnyAsync(x =>
+                string.Equals(x.Description, description, StringComparison.InvariantCultureIgnoreCase) &&
+                !x.IsCompleted);
         }
     }
 }
